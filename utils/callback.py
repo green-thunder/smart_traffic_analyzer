@@ -2,7 +2,6 @@ from ultralytics import YOLO
 import numpy as np
 import supervision as sv
 from collections import defaultdict
-from typing import List
 
 frame_width, frame_height = 1280, 720
 
@@ -50,30 +49,26 @@ def callback_per_frame(frame: np.ndarray) -> np.ndarray:
         skip_label=True,
     )
 
+    # Count every zone, not only the last one: all per-zone steps stay inside the loop.
     for i, zone in enumerate(zones):
         polygon = zone.polygon
-        frame = sv.draw_polygon(
-        frame,
-        polygon,
-        colors.by_idx(i)
-    )
-        
-    map = zone.trigger(detections=detections)
+        frame = sv.draw_polygon(frame, polygon, colors.by_idx(i))
 
-    detections_in_zone: List[sv.Detections] = detections[map]
+        in_zone = zone.trigger(detections=detections)
+        detections_in_zone: sv.Detections = detections[in_zone]
 
-    for tracker_id in detections_in_zone.tracker_id:
-        counts[i].add(tracker_id)
-    count = len(counts[i])
+        for tracker_id in detections_in_zone.tracker_id:
+            counts[i].add(tracker_id)
+        count = len(counts[i])
 
-    zone_center = sv.get_polygon_center(polygon=polygon)
-    text_anchor = sv.Point(x=zone_center.x, y=zone_center.y)
+        zone_center = sv.get_polygon_center(polygon=polygon)
+        text_anchor = sv.Point(x=zone_center.x, y=zone_center.y)
 
-    frame = sv.draw_text(
-        frame,
-        str(count),
-        text_anchor,
-        background_color=colors.by_idx(i)
-    )
-    
+        frame = sv.draw_text(
+            frame,
+            str(count),
+            text_anchor,
+            background_color=colors.by_idx(i)
+        )
+
     return frame
